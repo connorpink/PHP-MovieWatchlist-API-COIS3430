@@ -13,7 +13,7 @@ function sendResponse($status, $data) {
 // Parse URL and method
 $uri = parse_url($_SERVER['REQUEST_URI']);
 define('__BASE__', '/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/');
-$endpoint = str_replace(__BASE__, '', $uri['path']);
+$endpoint = strtolower(str_replace(__BASE__, '', $uri['path']));
 $method = $_SERVER['REQUEST_METHOD'];
 
 //connect DB
@@ -28,47 +28,83 @@ $pattern = '/^movies\/(\d+)\/$/';
 $pattern2 = '/^movies\/(\d+)\/rating$/';
 // if get
 if ($method == 'GET'){
+    // ~~~~~~ movies
     //if movies
-    if ($endpoint == 'movies'){
-        $stmt = $pdo->query("SELECT movieID,title,release_date,vote_average,vote_count,runtime,description FROM cois3430_movies");
-        $movies = $stmt->fetchAll();
+    if (str_contains($endpoint,  "movies")){
+        if ($endpoint == 'movies' || $endpoint == 'movies/'){
+            $stmt = $pdo->query("SELECT movieID,title,release_date,vote_average,vote_count,runtime,description FROM cois3430_movies");
+            $movies = $stmt->fetchAll();
 
-        //check for return
-        if ($movies) {
-            sendResponse(200, $movies);
-        } else {
-            sendResponse(500, ["error" => "Failed to query database"]);
+            //check for return
+            if ($movies) {
+                sendResponse(200, $movies);
+            } else {
+                sendResponse(500, ["error" => "Failed to query database"]);
+            }
+        }
+        // else if retriving movies with a certain id
+        else if (preg_match($pattern, $endpoint, $matches)){
+            $id = $matches[1];
+            $stmt = $pdo->prepare("SELECT movieID,title,release_date,vote_average,vote_count,runtime,description FROM cois3430_movies WHERE movieID = ?");
+            $stmt->execute([$id]);
+            $movies = $stmt->fetchAll();
+
+            //check for return
+            if ($movies) {
+                sendResponse(200, $movies);
+            } else {
+                sendResponse(500, ["error" => "Failed to query database"]);
+            }
+        }
+        // else if retriving movies with a certain id and getting rating
+        else if (preg_match($pattern2, $endpoint, $matches)){
+            $id = $matches[1];
+            $stmt = $pdo->prepare("SELECT movieID,vote_average FROM cois3430_movies WHERE movieID = ?");
+            $stmt->execute([$id]);
+            $movies = $stmt->fetchAll();
+
+            //check for return
+            if ($movies) {
+                sendResponse(200, $movies);
+            } else {
+                sendResponse(500, ["error" => "Failed to query database"]);
+            }
         }
     }
-    // else if retriving movies with a certain id
-    else if (preg_match($pattern, $endpoint, $matches)){
-        $id = $matches[1];
-        $stmt = $pdo->prepare("SELECT movieID,title,release_date,vote_average,vote_count,runtime,description FROM cois3430_movies WHERE movieID = ?");
-        $stmt->execute([$id]);
-        $movies = $stmt->fetchAll();
+    // ~~~~~ towatchlist
+    // else if watchlist entries
+    //    requires API key and returns all entries on users toWatchList
+    else if ($endpoint == 'towatchlist/entries'){
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
 
-        //check for return
-        if ($movies) {
-            sendResponse(200, $movies);
-        } else {
-            sendResponse(500, ["error" => "Failed to query database"]);
+        if (empty($apiKey)) {
+            sendResponse(400, ["error" => "You must provide an API key"]);
         }
-    }
-    // else if retriving movies with a certain id and getting rating
-    else if (preg_match($pattern2, $endpoint, $matches)){
-        $id = $matches[1];
-        $stmt = $pdo->prepare("SELECT movieID,vote_average FROM cois3430_movies WHERE movieID = ?");
-        $stmt->execute([$id]);
-        $movies = $stmt->fetchAll();
+    
+        $stmt = $pdo->prepare("SELECT userID, api_key FROM `cois3430_users` WHERE `api_key` = ?");
+        $stmt->execute([$apiKey]);
+        $user = $stmt->fetchAll();
+        if (!$user) {
+            sendResponse(403, ["error" => "The provided API key is invalid."]);
+        }
+        
+        $stmt = $pdo->prepare("SELECT * FROM `cois3430_toWatchList` WHERE `userID` = ?");
+        $stmt->execute([$user[0]["userID"]]);
+        $entries = $stmt->fetchAll();
+        
+        //check for return
+        if ($entries) {
+            sendResponse(200, $entries);
+        } else {
+            sendResponse(500, ["error" => "Returned no entries"]);
+        }
 
-        //check for return
-        if ($movies) {
-            sendResponse(200, $movies);
-        } else {
-            sendResponse(500, ["error" => "Failed to query database"]);
-        }
+        
     }
+
     else{
+        echo ("something went wrong");
         var_dump($endpoint);
         preg_match($pattern, $endpoint, $matches);
         var_dump($matches);
