@@ -1,3 +1,5 @@
+<?php $name = getenv('MYNAME'); ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -8,7 +10,7 @@
 </head>
 
 <body>
-  <h1>This is the index page.</h1>
+  <h1>This is the index page. Your name is <?= $name ?></h1>
 </body>
 
 </html>
