@@ -1,10 +1,21 @@
-SetEnv MYNAME mackenzieneill
+SetEnv MYNAME connorpink
 
+#this list should include the the allowed HTTP methods
 <Limit POST PUT PATCH DELETE GET>
   Require all granted
 </Limit>
+
+#allow all requests to access index.php
+<Files "index.php">
+    Require all granted
+</Files>
+
 #enable apache rewrite engine
 RewriteEngine On
+
+#ensure all requests go through HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
 
 # Turn on Auth Header
 RewriteCond %{HTTP:Authorization} ^(.*)
