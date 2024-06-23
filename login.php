@@ -3,7 +3,7 @@ $name = getenv('MYNAME');
 
 session_start();
 // redirect if user is already logged in
-if(isset($_SESSION['user'])){
+if(isset($_SESSION['username']) && isset($_SESSION['userID'])) {
   header("Location:index.php");
   exit();
 }

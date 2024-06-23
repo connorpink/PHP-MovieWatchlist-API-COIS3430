@@ -3,7 +3,7 @@ $name = getenv('MYNAME');
 
 session_start();
 // redirect if user is already logged in
-if(isset($_SESSION['user'])){
+if(isset($_SESSION['username']) && isset($_SESSION['userID'])) {
   header("Location:index.php");
   exit();
 }
@@ -20,7 +20,27 @@ if(isset($_POST['submit'])){
   else if (empty($email)){ $error = 'no email given'; }
   else if (empty($passwordOne)) { $error = 'no password given'; }
   else if ($passwordOne != $passwordTwo) { $error = 'passwords dont match'; }
+  else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $error = 'invalid email'; }
+  else {
+    require './includes/library.php';
+    $pdo = connectdb();
+    $query = 'SELECT * FROM cois3430_users WHERE username = ?';
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([$username]);
+    $results = $stmt->rowCount();
 
+    if ($results != 0) { $error = 'username taken'; }
+    else {
+      $hash = password_hash($passwordOne, PASSWORD_DEFAULT);
+      $query = 'insert into cois3430_users (username,email,password,api_key,api_date) values (?,?,?,?,NOW())';
+      $stmt = $pdo->prepare($query);
+      $stmt->execute([$username, $email, $hash,'test']);
+      $_SESSION['userID'] = $pdo->lastInsertId();
+      $_SESSION['username'] = $username;
+      header("Location:index.php");
+      exit();
+    }
+  }
 }
  
 ?>
