@@ -119,3 +119,16 @@ body {
 .loginForm .checkboxInput input{
     accent-color: #f87171;
 }
+
+.error {
+    margin: .3rem 0rem .9rem 0rem !important;
+    padding: .3rem !important;
+    padding-left: .9rem !important;
+    border: .1rem solid #991b1b;
+    border-radius: .3rem;
+    background-color: rgb(153, 27, 27, .5);
+}
+
+.hidden{
+    display: none;
+}
