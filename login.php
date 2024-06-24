@@ -3,7 +3,7 @@ $name = getenv('MYNAME');
 
 session_start();
 // redirect if user is already logged in
-if(isset($_SESSION['username']) && isset($_SESSION['userID'])) {
+if(isset($_SESSION['username']) && isset($_SESSION['userID']) && isset($_SESSION['api_key'])) {
   header("Location:index.php");
   exit();
 }
@@ -14,8 +14,38 @@ $passwordOne = $_POST['passwordOne'] ?? "";
 $error = '';
 if(isset($_POST['submit'])){
 
+  // check for any invalid data provided by the user (because of you the html is setup only one error message will be shown at once)
   if (empty($username)){ $error = 'no username given'; }
   else if (empty($passwordOne)) { $error = 'no password given'; }
+  else {
+
+    //connect to the database
+    require './includes/library.php';
+    $pdo = connectdb();
+
+    //find user with given username
+    $query = 'SELECT * FROM cois3430_users WHERE username = ?';
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([$username]);
+    $databaseUser = $stmt->fetch();
+    if(empty($databaseUser)) { $error = 'username not found'; }
+    else {
+
+      //check if password is correct
+      if (!password_verify($passwordOne, $databaseUser['password'])){ $error = 'incorect passwrod'; }
+      else {
+
+        //save all relavent information to session
+        $_SESSION['username'] = $databaseUser['username'];
+        $_SESSION['userID'] = $databaseUser['userID'];
+        $_SESSION['api_key'] = $databaseUser['api_key'];
+
+        //redirect user
+        header("Location:index.php");
+        exit(); 
+      }
+    }
+  }
 
 }
  
@@ -56,13 +86,6 @@ if(isset($_POST['submit'])){
         placeholder=' '
         />
         <label for="password">Password</label>
-      </div>
-
-      <div class="checkboxInput">
-        <input type="checkbox"
-        name="rememberMe"
-        value="1"/>
-        <label for="remember">Remember Me</label>
       </div>
 
       <input type="submit" name="submit" value="Create Account">

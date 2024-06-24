@@ -3,7 +3,7 @@ $name = getenv('MYNAME');
 
 session_start();
 // redirect if user is already logged in
-if(isset($_SESSION['username']) && isset($_SESSION['userID'])) {
+if(isset($_SESSION['username']) && isset($_SESSION['userID']) && isset($_SESSION['api_key'])) {
   header("Location:index.php");
   exit();
 }
@@ -16,27 +16,44 @@ $passwordTwo = $_POST['passwordTwo'] ?? "";
 $error = '';
 if(isset($_POST['submit'])){
 
+  // check for any invalid data provided by the user (because of you the html is setup only one error message will be shown at once)
   if (empty($username)){ $error = 'no username given'; }
   else if (empty($email)){ $error = 'no email given'; }
   else if (empty($passwordOne)) { $error = 'no password given'; }
   else if ($passwordOne != $passwordTwo) { $error = 'passwords dont match'; }
   else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $error = 'invalid email'; }
   else {
+
+    //connect to the database
     require './includes/library.php';
     $pdo = connectdb();
+
+    //check if username already exists in database
     $query = 'SELECT * FROM cois3430_users WHERE username = ?';
     $stmt = $pdo->prepare($query);
     $stmt->execute([$username]);
     $results = $stmt->rowCount();
-
     if ($results != 0) { $error = 'username taken'; }
     else {
+
+      //hash the password
       $hash = password_hash($passwordOne, PASSWORD_DEFAULT);
+
+      //create an api key
+      $bytes = random_bytes(32);
+      $base64ApiKey = base64_encode($bytes);
+
+      //save user data to the database
       $query = 'insert into cois3430_users (username,email,password,api_key,api_date) values (?,?,?,?,NOW())';
       $stmt = $pdo->prepare($query);
-      $stmt->execute([$username, $email, $hash,'test']);
+      $stmt->execute([$username, $email, $hash,$base64ApiKey]);
+
+      //save relavent data to session
       $_SESSION['userID'] = $pdo->lastInsertId();
       $_SESSION['username'] = $username;
+      $_SESSION['api_key'] = $base64ApiKey;
+
+      //redirect user
       header("Location:index.php");
       exit();
     }
@@ -100,13 +117,6 @@ if(isset($_POST['submit'])){
         placeholder=' '
         />
         <label for="password">Confirm Password</label>
-      </div>
-
-      <div class="checkboxInput">
-        <input type="checkbox"
-        name="rememberMe"
-        value="1"/>
-        <label for="remember">Remember Me</label>
       </div>
 
       <input type="submit" name="submit" value="Create Account">
