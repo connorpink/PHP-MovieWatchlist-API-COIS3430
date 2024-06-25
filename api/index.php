@@ -186,20 +186,34 @@ elseif ($method == 'PUT') {
         //check if api key is valid
         $userId = checkApiKey($apiKey, $pdo);
 
+        parse_str(file_get_contents('php://input'), $req_data);
+        //var_dump($req_data);
+
         // data as movieID, priority, and notes
         // first check if they are all set
-        if (empty($_POST['movieID']) || empty($_POST["priority"]) || empty($_POST["notes"])) {
+        if (empty($req_data['movieID']) || empty($req_data["priority"]) || empty($req_data["notes"])) {
             sendResponse(500, ["error" => "You must provide a movieid, priority and notes"]);
         }
+        // get form data in the same method as the API key
+        $movieID = $req_data["movieID"];
+        $priority = $req_data["priority"];
+        $notes = $req_data["notes"];
         //check that movieID is a number
-        if (!is_numeric($_POST['movieID'])) {
+        if (!is_numeric($movieID)) {
             //send error response
             sendResponse(400, ["error" => "movieID must be a number"]);
         }
-        // get form data in the same method as the API key
-        $movieID = $_POST["movieID"];
-        $priority = $_POST["priority"];
-        $notes = $_POST["notes"];
+        //check that priority is a number
+        if (!is_numeric($priority)) {
+            //send error response
+            sendResponse(400, ["error" => "Priority must be a number"]);
+        }
+        //check that notes is a string
+        if (!is_string($notes)) {
+            //send error response
+            sendResponse(400, ["error" => "Notes must be a string"]);
+        }
+
 
         // check if there is an entry with the toWatchListId
         $stmt = $pdo->prepare("SELECT * FROM cois3430_toWatchList WHERE toWatchListID=? AND userID=?");
@@ -208,12 +222,15 @@ elseif ($method == 'PUT') {
         if ($stmt->rowCount() > 0) {
             //update code
             $stmt = $pdo->prepare("UPDATE cois3430_toWatchList SET movieID=?, priority=?, notes=? WHERE toWatchListID=? AND userID=?");
-            $stmt->execute([$movieID, $priority, $notes]);
+            $stmt->execute([$movieID, $priority, $notes, $toWatchListId, $userId]);
+            sendResponse(201, ["message" => "To Watch List Updated"]);
         } else {
             //insert code
             $stmt = $pdo->prepare("INSERT INTO cois3430_toWatchList (userID, movieID, priority, notes) VALUES(?,?,?,?)");
             $stmt->execute([$userId, $movieID, $priority, $notes]);
+            sendResponse(201, ["message" => "To Watch List Inserted"]);
         }
+
     }
 }
 
