@@ -70,9 +70,12 @@ if(isset($_POST['submit'])){
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Account</title>
   <link rel="stylesheet" href="./styles/login.css">
+  <link rel="stylesheet" href="./styles/main.css">
 </head>
 
 <body>
+  <?php include './components/nav.php'; ?>
+
   <div class="loginForm">
 
     <h1>Create Account</h1>

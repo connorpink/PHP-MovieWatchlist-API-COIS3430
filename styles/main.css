@@ -1,0 +1,43 @@
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0rem;
+}
+
+nav {
+  height: 4.5rem;
+  width: 100%;
+  background-color: #4c0519;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+nav .container{
+  height: 100%;
+  width: 100%;
+  max-width: 45rem;
+  margin: auto;
+  display: flex;
+  justify-content: space-between;
+}
+
+nav .container div{
+  margin-top: 1.2rem
+}
+
+nav a {
+  border-radius: .3rem;
+  margin: 0rem .3rem;
+  padding: .3rem;
+  color: #fef2f2;
+  font-size: 1.5rem;
+  text-decoration: none;
+  border: .12rem solid #fef2f2;
+}
+nav a:hover {
+  margin: 0rem .3rem;
+  padding: .3rem;
+  color: #fecaca;
+  font-size: 1.5rem;
+  text-decoration: none;
+  border: .12rem solid #fecaca;
+}
