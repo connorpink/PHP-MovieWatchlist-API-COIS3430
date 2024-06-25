@@ -14,7 +14,6 @@ function sendResponse($status, $data)
 //function to check if api key is valid and get userID
 function checkApiKey($apiKey, $pdo)
 {
-
     if (empty($apiKey)) {
         sendResponse(400, ["error" => "You must provide an API key"]);
         return false;
@@ -120,16 +119,13 @@ if ($method == 'GET') {
         }
 
     } else {
-        echo("something went wrong");
-        var_dump($endpoint);
-        preg_match($pattern, $endpoint, $matches);
-        var_dump($matches);
+        sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
 }
 // if method is post
 elseif ($method == "POST") {
     // if inserting new watch list entry
-    if ($endpoint == 'towatchlist/entries') {
+    if ($endpoint == 'towatchlist/entries' || $endpoint == 'towatchlist/entries/') {
         //get api key from form header data (header is X-API-KEY: {key})
         $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
         //check if api key is valid
@@ -143,8 +139,23 @@ elseif ($method == "POST") {
         $movieID = $_POST["movieID"];
         $priority = $_POST["priority"];
         $notes = $_POST["notes"];
+        //check that movieID is a number
+        if (!is_numeric($movieID)) {
+            //send error response
+            sendResponse(400, ["error" => "movieID must be a number"]);
+        }
+        //check that priority is a number
+        if (!is_numeric($priority)) {
+            //send error response
+            sendResponse(400, ["error" => "Priority must be a number"]);
+        }
+        //check that notes is a string
+        if (!is_string($notes)) {
+            //send error response
+            sendResponse(400, ["error" => "Notes must be a string"]);
+        }
         $stmt = $pdo->prepare("INSERT INTO cois3430_toWatchList (`userID`, `movieID`, `priority`, `notes`) VALUES (?,?,?,?)");
-        $stmt->execute([$userID, $movieID, $priority, $notes]);
+        $stmt->execute([$userId, $movieID, $priority, $notes]);
         // if successful insert into toWatchlist send appropriate response else send error
         if ($stmt) {
             sendResponse(201, ["message" => "Successfully added to watchlist"]);
@@ -180,6 +191,11 @@ elseif ($method == 'PUT') {
         if (empty($_POST['movieID']) || empty($_POST["priority"]) || empty($_POST["notes"])) {
             sendResponse(500, ["error" => "You must provide a movieid, priority and notes"]);
         }
+        //check that movieID is a number
+        if (!is_numeric($_POST['movieID'])) {
+            //send error response
+            sendResponse(400, ["error" => "movieID must be a number"]);
+        }
         // get form data in the same method as the API key
         $movieID = $_POST["movieID"];
         $priority = $_POST["priority"];
@@ -204,7 +220,7 @@ elseif ($method == 'PUT') {
 //else if method is patch
 elseif ($method == 'PATCH') {
     // Define the pattern to match /toWatchList/entries/{id}
-    $pattern = '/^toWatchList\/entries\/(\d+)\/$/';
+    $pattern = '/^towatchlist\/entries\/(\d+)\/$/';
 
     if (preg_match($pattern, $endpoint, $matches)) {
         //get toWatchListId from url
@@ -216,11 +232,30 @@ elseif ($method == 'PATCH') {
 //else if method is delete
 elseif ($method == 'DELETE') {
     // Define the pattern to match /toWatchList/entries/{id}
-    $pattern = '/^toWatchList\/entries\/(\d+)\/$/';
+    $pattern = '/^towatchlist\/entries\/(\d+)\/$/';
+    $pattern2 = '/^towatchlist\/entries\/(\d+)$/';
 
-    if (preg_match($pattern, $endpoint, $matches)) {
+    // if endpoint matches for delete watch list entry
+    if (preg_match($pattern, $endpoint, $matches) || preg_match($pattern2, $endpoint, $matches)) {
         //get toWatchListId from url
-        $toWatchListId   = $matches[1];
+        $toWatchListId = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        // check that a movieID was submit as form data
+        if (empty($_POST['movieID'])) {
+            sendResponse(500, ["error" => "You must provide a movieid"]);
+        }
+
+        //check that movieID is a number
+        if (!is_numeric($_POST['movieID'])) {
+            //send error response
+            sendResponse(400, ["error" => "movieID must be a number"]);
+        }
+
     }
 }
 ?>
