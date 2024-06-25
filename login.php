@@ -91,7 +91,7 @@ if(isset($_POST['submit'])){
         <label for="password">Password</label>
       </div>
 
-      <input type="submit" name="submit" value="Create Account">
+      <input type="submit" name="submit" value="Login">
 
     </form>
 
