@@ -7,5 +7,6 @@
         <li>Get Movies - {GET} /movies </li>
         <li>Get Movie with ID - {GET} /movies/{ID}/ </li>
         <li>Get Movie rating with ID - {GET} /movies/{ID}/rating</li>
-        <li> </li>
+        <li>Get watch list entries - {GET} /toWatchList/entries {X-API-KEY}</li>
+        <li>Post watch list entry - {POST} /toWatchList/entries {X-API-KEY, movieId, priority, notes}</li>
     </ul>
