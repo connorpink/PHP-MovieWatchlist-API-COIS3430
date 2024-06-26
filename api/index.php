@@ -71,6 +71,12 @@ if ($method == 'GET') {
     $ratingPattern1 = '/^completedwatchlist\/entries\/(\d+)\/rating$/';
     // Define the pattern to match /completedWatchList/entries/{id}/times-watched/
     $ratingPattern2 = '/^completedwatchlist\/entries\/(\d+)\/rating\/$/';
+
+    // Define the pattern to match /users/entries/{id}/stats
+    $userPattern1 = '/^users\/(\d+)\/stats$/';
+    // Define the pattern to match /users/entries/{id}/stats/
+    $userPattern2 = '/^users\/(\d+)\/stats\/$/';
+
     // ~~~~~~ movies
     //if movies
     if (str_contains($endpoint, "movies")) {
@@ -192,6 +198,106 @@ if ($method == 'GET') {
         } else {
             sendResponse(500, ["error" => "no entries in completed watch list for this movie as current user"]);  //no content
         }
+    }
+    //else if endpoint is user/{id}/stats
+    elseif(preg_match($userPattern1, $endpoint, $matches) || preg_match($userPattern2, $endpoint, $matches)) {
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userID = checkApiKey($apiKey, $pdo);
+        $URLuserID = $matches[1];
+        if ($URLuserID == $userID) {
+            //get user stats
+            // get completed watch list entries
+            $stmt = $pdo->prepare("SELECT * FROM `cois3430_completedWatchList` WHERE `userID`=?");
+            $stmt->execute([$userID]);
+            $completedEntries = $stmt->fetchAll();
+            //get watch list entries
+            $stmt = $pdo->prepare("SELECT * FROM `cois3430_toWatchList` WHERE `userID`=?");
+            $stmt->execute([$userID]);
+            $toWatchEntries = $stmt->fetchAll();
+
+            // check for rows returned
+            if ($completedEntries || $toWatchEntries) {
+                //create user stats json object from data
+                // return total time watched, average rating, planned time to watch, and first movie watched
+                if ($completedEntries) {
+                    // time watched and average rating first movie watched
+                    $timeWatched = 0;
+                    $averageRating = 0;
+                    //set firstMoviewatched to date_initially_watched of first entry in completedEntries
+                    $firstMovieWatched = new DateTime($completedEntries[0]['date_initially_watched']);
+                    $firstMovieWatchedId = $completedEntries[0]['movieID'];
+                    $stmt = $pdo->prepare("SELECT `title` FROM `cois3430_movies` WHERE `movieID`=?");
+                    $stmt->execute([$firstMovieWatchedId]);
+                    $firstMovieWatchedTitle = $stmt->fetch()['title'];
+                    foreach ($completedEntries as $entry) {
+                        $movieID = $entry['movieID'];
+                        //get average
+                        $averageRating = $averageRating + $entry['rating'];
+                        //get runtime
+                        $stmt = $pdo->prepare("SELECT `runtime`,`title` FROM `cois3430_movies` WHERE `movieID`=?");
+                        $stmt->execute([$movieID]);
+                        $movie = $stmt->fetch();
+                        $runtime = $movie['runtime'];
+                        $timeWatched += $runtime;
+                        // get first movie watched from lowest date_inititially_watched
+                        //if date_initially_watched is less than firstMoviewatched, set firstMoviewatched to date_initially_watched
+                        // each date_initially_watched in entry will be a string like 2019-03-04, convert to date object and compare
+                        //if date is less than firstMoviewatched, set firstMoviewatched to that date
+                        //$firstMovieWatched = new DateTime($firstMovieWatched);
+                        $entryDate = new DateTime($entry['date_initially_watched']);
+                        if ($entryDate < $firstMovieWatched) {
+                            $firstMovieWatched = $entry['date_initially_watched'];
+                            $firstMovieWatchedTitle = $movie['title'];
+                        }
+                    }
+                    //update average rating by dividing by number of entries in completedEntries
+                    $averageRating = round(($averageRating / count($completedEntries)), 2);
+                    //format first movie watched date
+                    $firstMovieWatched = $firstMovieWatched->format('Y-m-d');
+                } else {
+                    //no entries
+                    $averageRating = 'N/A';
+                    $timeWatched = 'N/A';
+                    $firstMovieWatched = 'N/A';
+                    $firstMovieWatchedTitle = 'N/A';
+                }
+
+                if ($toWatchEntries) {
+                    //planned time to watch
+                    $plannedTimeWatched = 0;
+                    foreach ($toWatchEntries as $entry) {
+                        $movieID = $entry['movieID'];
+                        //get runtime
+                        $stmt = $pdo->prepare("SELECT `runtime` FROM `cois3430_movies` WHERE `movieID`=?");
+                        $stmt->execute([$movieID]);
+                        $runtime = $stmt->fetch()['runtime'];
+                        $plannedTimeWatched += $runtime;
+                    }
+                } else {
+                    $plannedTimeWatched = 'N/A';
+                }
+
+                // now take plannedTimeWatched,firstMovieWatched, firstmovieWatchedTitle,averageRating, and timeWatched and put into json object
+                $entry = [
+                    "date of first Movie Watched" => $firstMovieWatched,
+                    "first Movie watchedTitle" => $firstMovieWatchedTitle,
+                    "average movie Rating" => $averageRating,
+                    "planned movie Time Watched" => $plannedTimeWatched,
+                    "actual movie time watched" => $timeWatched
+                ];
+                //send response
+                sendResponse(200, ["stats" => $entry]);
+
+            } else {
+                sendResponse(500, ["error" => "no entries in completed watch list or no watch list for this user"]);  //no content
+            }
+        } else {
+            //send error message
+            sendResponse(500, ["error" => "trying to see user stats not authorized by API key"]);
+        }
+
     } else {
         sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
