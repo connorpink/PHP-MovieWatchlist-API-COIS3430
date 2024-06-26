@@ -1,5 +1,12 @@
 <?php $name = getenv('MYNAME');
 
+// function to validate that input is a date
+function validateDate($date, $format = 'Y-m-d')
+{
+    $d = DateTime::createFromFormat($format, $date);
+    return $d && $d->format($format) === $date;
+}
+
 // Function to send JSON response
 function sendResponse($status, $data)
 {
@@ -42,17 +49,28 @@ $pdo = connectDB();
 
 //endpoint code
 
-// Define the pattern to match /movies/{id}
-$moviePattern1 = '/^movies\/(\d+)\/$/';
-// Define the pattern to match /movies/{id}/rating
-$moviePattern2 = '/^movies\/(\d+)$/';
 
-// Define the pattern to match /movies/{id}
-$movieRatingPattern1 = '/^movies\/(\d+)\/rating$/';
-// Define the pattern to match /movies/{id}/rating
-$movieRatingPattern2 = '/^movies\/(\d+)\/rating\/$/';
 // if get
 if ($method == 'GET') {
+    // Define the pattern to match /movies/{id}
+    $moviePattern1 = '/^movies\/(\d+)\/$/';
+    // Define the pattern to match /movies/{id}
+    $moviePattern2 = '/^movies\/(\d+)$/';
+
+    // Define the pattern to match /movies/{id}/rating
+    $movieRatingPattern1 = '/^movies\/(\d+)\/rating$/';
+    // Define the pattern to match /movies/{id}/rating/
+    $movieRatingPattern2 = '/^movies\/(\d+)\/rating\/$/';
+
+    // Define the pattern to match /completedWatchList/entries/{id}/times-watched
+    $timesWatchedPattern1 = '/^completedwatchlist\/entries\/(\d+)\/times-watched$/';
+    // Define the pattern to match /completedWatchList/entries/{id}/times-watched/
+    $timesWatchedPattern2 = '/^completedwatchlist\/entries\/(\d+)\/times-watched\/$/';
+
+    // Define the pattern to match /completedWatchList/entries/{id}/times-watched
+    $ratingPattern1 = '/^completedwatchlist\/entries\/(\d+)\/rating$/';
+    // Define the pattern to match /completedWatchList/entries/{id}/times-watched/
+    $ratingPattern2 = '/^completedwatchlist\/entries\/(\d+)\/rating\/$/';
     // ~~~~~~ movies
     //if movies
     if (str_contains($endpoint, "movies")) {
@@ -118,6 +136,62 @@ if ($method == 'GET') {
             sendResponse(500, ["error" => "Returned no entries"]);
         }
 
+    }
+    //else if endpoint is completedwatchlistEntries
+    elseif ($endpoint == 'completedwatchlist/entries' || $endpoint == 'completedwatchlist/entries/') {
+        //return all entries on users completedWatchList
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        $stmt = $pdo->prepare("SELECT * FROM `cois3430_completedWatchList` WHERE `userID` =?");
+        $stmt->execute([$userId]);
+        $entries = $stmt->fetchAll();
+
+        // check for rows returned
+        if ($entries) {
+            sendResponse(200, $entries);
+        } else {
+            sendResponse(500, ["error" => "no entries in completed watch list for current user"]); //no content
+        }
+
+    }
+    //else if endpoint is completedwatchlistEntries/{id}/times-watched
+    elseif(preg_match($timesWatchedPattern1, $endpoint, $matches) || preg_match($timesWatchedPattern2, $endpoint, $matches)) {
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userID = checkApiKey($apiKey, $pdo);
+        $movieID = $matches[1];
+        $stmt = $pdo->prepare("SELECT movieID, times_watched FROM `cois3430_completedWatchList` WHERE `userID`=? AND `movieID`=?");
+        $stmt->execute([$userID, $movieID]);
+
+        $entry = $stmt->fetch();
+        // check for rows returned
+        if ($entry) {
+            sendResponse(200, ["times watched" => $entry]);
+        } else {
+            sendResponse(500, ["error" => "no entries in completed watch list for this movie as current user"]);  //no content
+        }
+    }
+    //else if endpoint is completedwatchlistEntries/{id}/rating
+    elseif(preg_match($ratingPattern1, $endpoint, $matches) || preg_match($ratingPattern2, $endpoint, $matches)) {
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userID = checkApiKey($apiKey, $pdo);
+        $movieID = $matches[1];
+        $stmt = $pdo->prepare("SELECT movieID, rating FROM `cois3430_completedWatchList` WHERE `userID`=? AND `movieID`=?");
+        $stmt->execute([$userID, $movieID]);
+
+        $entry = $stmt->fetch();
+        // check for rows returned
+        if ($entry) {
+            sendResponse(200, ["rating" => $entry]);
+        } else {
+            sendResponse(500, ["error" => "no entries in completed watch list for this movie as current user"]);  //no content
+        }
     } else {
         sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
@@ -131,14 +205,17 @@ elseif ($method == "POST") {
         //check if api key is valid
         $userId = checkApiKey($apiKey, $pdo);
 
+        parse_str(file_get_contents('php://input'), $req_data);
+
         // data as movieID, priority, and notes
         // first check if they are all set
-        if (empty($_POST['movieID']) || empty($_POST["priority"]) || empty($_POST["notes"])) {
+        if (empty($req_data['movieID']) || empty($req_data["priority"]) || empty($req_data["notes"])) {
             sendResponse(500, ["error" => "You must provide a movieid, priority and notes"]);
         }
-        $movieID = $_POST["movieID"];
-        $priority = $_POST["priority"];
-        $notes = $_POST["notes"];
+        // get form data in the same method as the API key
+        $movieID = $req_data["movieID"];
+        $priority = $req_data["priority"];
+        $notes = $req_data["notes"];
         //check that movieID is a number
         if (!is_numeric($movieID)) {
             //send error response
@@ -164,8 +241,106 @@ elseif ($method == "POST") {
         }
     }
 
+    //else if inserting new completed watch list entry
+    elseif ($endpoint == 'completedwatchlist/entries' || $endpoint == 'completedwatchlist/entries/') {
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        // get form data
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        // movieID, rating,notes,date_initially_watched, date_last_watched, times_watched
+        // first check if they are all set
+        if (empty($req_data['movieID']) || empty($req_data["notes"]) || empty($req_data["date_initially_watched"]) || empty($req_data["date_last_watched"]) || empty($req_data["times_watched"])) {
+            sendResponse(500, ["error" => "You must provide a movieID, notes, date_initially_wathced, date_last_watched, and times_watched "]);
+        }
+        $movieID = $req_data["movieID"];
+        $rating = $req_data['rating'];
+        $notes = $req_data['notes'];
+        $dateInitiallyWatched = $req_data['date_initially_watched'];
+        $dateLastWatched = $req_data['date_last_watched'];
+        $timesWatched = $req_data['times_watched'];
+
+        //check that movieID is a number
+        if (!is_numeric($movieID)) {
+            //send error response
+            sendResponse(400, ["error" => "movieID must be a number"]);
+        }
+        //check that rating is a number and is between 1-10 inclusive
+        if (!is_numeric($rating)) {
+            //send error response
+            sendResponse(400, ["error" => "movieID must be a number"]);
+        }
+        if ($rating < 1 || $rating > 10) {
+            //send error response
+            sendResponse(400, ["error" => "rating must be between 1 and 10"]);
+        }
+        //check that notes is a string
+        if (!is_string($notes)) {
+            //send error response
+            sendResponse(400, ["error" => "notes must be a string"]);
+        }
+        //check that dateInitiallyWatched is a date
+        if (!is_string($dateInitiallyWatched)) {
+            //send error response
+            sendResponse(400, ["error" => "date_initially_watched must be a date"]);
+        }
+        //check that dateIntitiallyWatched is in SQL date format like 2019-03-15
+        if (!validateDate($dateInitiallyWatched, 'Y-m-d')) {
+            //send error
+            sendResponse(400, ["error" => "date_initially_watched is not in SQL date format like 2019-03-15"]);
+        }
+        //check that dateLastWatched is a date
+        if (!is_string($dateLastWatched)) {
+            //send error response
+            sendResponse(400, ["error" => "date_last_watched must be a date"]);
+        }
+        //check that dateLastWatched is in SQL date format like 2019-03-15
+        if (!validateDate($dateLastWatched, 'Y-m-d')) {
+            //send error
+            sendResponse(400, ["error" => "date_last_watched is not in SQL date format like 2019-03-15"]);
+        }
+        //check that timesWatched is an integer
+        if (!is_numeric($timesWatched)) {
+            //send error response
+            sendResponse(400, ["error" => "times_watched must be an integer"]);
+        }
+        //check that timesWatched is greater than or equal to zero
+        if ($timesWatched < 0) {
+            //send error response
+            sendResponse(400, ["error" => "times_watched must be a positive number"]);
+        }
+
+        // insert new movie to completed watchlist
+
+        $stmt  = $pdo->prepare("INSERT INTO cois3430_completedWatchList (`movieID`, `userID`, `rating`, `notes`, `date_initially_watched`, `date_last_watched`, `times_watched`) VALUES (?,?,?,?,?,?,?)");
+        $stmt->execute([$movieID,$userId,$rating,$notes,$dateInitiallyWatched,$dateLastWatched,$timesWatched]);
+        // if successful insert into completed watch list send appropriate response else send error
+        if ($stmt) {
+            // get movie data from movie table with movieID
+            $stmt = $pdo->prepare("SELECT * FROM cois3430_movies WHERE movieID=?");
+            $stmt->execute([$movieID]);
+            $movie = $stmt->fetch();
+            //extract vote_average and vote_count from return
+            $vote_average = $movie['vote_average'];
+            $vote_count = $movie['vote_count'];
+
+            //update rating for movie in movie table
+            //calculate new rating using forumla (oldAvgRating * oldRatingCount) + NewRating / NewCount
+            $newRating = (($vote_average * $vote_count) + $rating) / ($vote_count + 1);
+            $stmt = $pdo->prepare("UPDATE cois3430_movies SET vote_count=?, vote_average=? WHERE movieID=?");
+            $stmt->execute([$vote_count + 1,$newRating, $movieID]);
+            sendResponse(201, ["message" => "Successfully added to completed watchlist"]);
+        } else {
+            sendResponse(500, ["error" => "failed to insert completed watch list entry"]);
+        }
+
+    } else {
+        sendResponse(500, ["error" => "something was wrong with the endpoint"]);
+    }
 }
-/* TODO: Work in progress : PUT and PATCH dont take form data (need workaround) */
 // else if method is put
 elseif ($method == 'PUT') {
 
@@ -187,7 +362,6 @@ elseif ($method == 'PUT') {
         $userId = checkApiKey($apiKey, $pdo);
 
         parse_str(file_get_contents('php://input'), $req_data);
-        //var_dump($req_data);
 
         // data as movieID, priority, and notes
         // first check if they are all set
@@ -231,17 +405,169 @@ elseif ($method == 'PUT') {
             sendResponse(201, ["message" => "To Watch List Inserted"]);
         }
 
+    } else {
+        sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
 }
 
 //else if method is patch
 elseif ($method == 'PATCH') {
     // Define the pattern to match /toWatchList/entries/{id}
-    $pattern = '/^towatchlist\/entries\/(\d+)\/$/';
+    $pattern = '/^towatchlist\/entries\/(\d+)\/priority$/';
+    $pattern2 = '/^towatchlist\/entries\/(\d+)\/priority\/$/';
 
-    if (preg_match($pattern, $endpoint, $matches)) {
+    //patterns for /completedWatchList/entries/{id}/rating
+    $ratingPattern = '/^completedwatchlist\/entries\/(\d+)\/rating$/';
+    $ratingPattern2 = '/^completedwatchlist\/entries\/(\d+)\/rating\/$/';
+
+    //patterns for /completedWatchList/entries/{id}/times-watched
+    $watchedPattern = '/^completedwatchlist\/entries\/(\d+)\/times-watched$/';
+    $watchedPattern2 = '/^completedwatchlist\/entries\/(\d+)\/times-watched\/$/';
+
+    // if match is successful then update priority for entry
+    if (preg_match($pattern, $endpoint, $matches) || preg_match($pattern2, $endpoint, $matches)) {
         //get toWatchListId from url
         $toWatchListId  = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        // data as priority
+        // first check if they are all set
+        if (empty($req_data['priority'])) {
+            sendResponse(500, ["error" => "You must provide a priority"]);
+        }
+        // get form data in the same method as the API key
+        $priority = $req_data["priority"];
+        //check that priority is a number
+        if (!is_numeric($priority)) {
+            //send error response
+            sendResponse(400, ["error" => "Priority must be a number"]);
+        }
+
+        //check that entry exists in DB
+        $stmt = $pdo->prepare('SELECT * FROM cois3430_toWatchList WHERE toWatchListId=? AND userID=?');
+        $stmt->execute([$toWatchListId, $userId]);
+        //check that entry exists in toWatchList
+        if ($stmt->rowCount() == 0) {
+            sendResponse(400, ["error" => "this entry does not exist in toWatchList"]);
+        }
+        //otherwise update watch list entry
+        else {
+            $stmt = $pdo->prepare("UPDATE cois3430_toWatchList SET priority=? WHERE toWatchListID=? AND userID=?");
+            $stmt->execute([$priority, $toWatchListId,$userId]);
+            sendResponse(200, ["message" => "priority updated for entry in toWatchList"]);
+        }
+
+    }
+    // else if endpoint like /completedWatchList/entries/{id}/rating/
+    elseif (preg_match($ratingPattern, $endpoint, $matches) || preg_match($ratingPattern2, $endpoint, $matches)) {
+        //get movieID from url
+        $movieID  = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        if (empty($req_data['rating'])) {
+            sendResponse(500, ["error" => "You must provide a rating"]);
+        }
+        $rating = $req_data['rating'];
+        //check that rating is a number and is between 1-10 inclusive
+        if (!is_numeric($rating)) {
+            //send error response
+            sendResponse(400, ["error" => "movieID must be a number"]);
+        }
+        if ($rating < 1 || $rating > 10) {
+            //send error response
+            sendResponse(400, ["error" => "rating must be between 1 and 10"]);
+        }
+
+        //update rating for entry
+        $stmt = $pdo->prepare('UPDATE cois3430_completedWatchList SET rating=? WHERE movieID=? AND userId=?');
+        //if successful update send appropriate response else send error
+        $stmt->execute([$rating,  $movieID, $userId]);
+
+        // if successful update into completed watch list send appropriate response else send error
+        if ($stmt) {
+            // get movie data from movie table with movieID
+            $stmt = $pdo->prepare("SELECT * FROM cois3430_movies WHERE movieID=?");
+            $stmt->execute([$movieID]);
+            $movie = $stmt->fetch();
+            //extract vote_average and vote_count from return
+            $vote_average = $movie['vote_average'];
+            $vote_count = $movie['vote_count'];
+
+            //update rating for movie in movie table
+            //calculate new rating using forumla (oldAvgRating * oldRatingCount) + NewRating / NewCount
+            $newRating = (($vote_average * $vote_count) + $rating) / ($vote_count + 1);
+            $stmt = $pdo->prepare("UPDATE cois3430_movies SET vote_count=?, vote_average=? WHERE movieID=?");
+            $stmt->execute([$vote_count + 1,$newRating, $movieID]);
+            sendResponse(201, ["message" => "Successfully updated rating for movie in completed watchlist"]);
+        } else {
+            sendResponse(500, ["error" => "failed to update rating for completed watch list entry"]);
+        }
+
+    }
+
+    // else if endpoint like /completedWatchList/entries/{id}/times-watched/
+    elseif (preg_match($watchedPattern, $endpoint, $matches) || preg_match($watchedPattern2, $endpoint, $matches)) {
+        //get movieID from url
+        $movieID  = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        if (empty($req_data['times-watched'])) {
+            sendResponse(500, ["error" => "You must provide a new times-watched"]);
+        }
+        $timesWatched = $req_data['times-watched'];
+        //check that timesWatched is an integer
+        if (!is_numeric($timesWatched)) {
+            //send error response
+            sendResponse(400, ["error" => "times_watched must be an integer"]);
+        }
+        //check that timesWatched is greater than or equal to zero
+        if ($timesWatched < 0) {
+            //send error response
+            sendResponse(400, ["error" => "times_watched must be a positive number"]);
+        }
+
+        //first get old times watched in order to increment
+        $stmt = $pdo->prepare('SELECT times_watched FROM cois3430_completedWatchList WHERE movieID=? AND userId=?');
+        $stmt->execute([$movieID, $userId]);
+        //extract times_watched
+        $entry = $stmt->fetch();
+        // calculate new incremental times watched
+        $newTimesWatched = $entry['times_watched'] + $timesWatched;
+
+        // create variable for current date in format 2019-03-27
+        $currentDate = date('Y-m-d', time());
+
+        //update times watched and date last watched for entry
+        $stmt = $pdo->prepare('UPDATE cois3430_completedWatchList SET times_watched=?,date_last_watched=? WHERE movieID=? AND userId=?');
+        $stmt->execute([$newTimesWatched,$currentDate,$movieID,$userId]);
+
+        // if successful update into completed watch list send appropriate response else send error
+        if ($stmt) {
+            sendResponse(201, ["message" => "Successfully updated times_watched for movie in completed watchlist"]);
+        } else {
+            sendResponse(500, ["error" => "failed to update times_watched for completed watch list entry"]);
+        }
+
+    } else {
+        sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
 
 }
@@ -251,6 +577,11 @@ elseif ($method == 'DELETE') {
     // Define the pattern to match /toWatchList/entries/{id}
     $pattern = '/^towatchlist\/entries\/(\d+)\/$/';
     $pattern2 = '/^towatchlist\/entries\/(\d+)$/';
+
+    //patterns for /completedWatchList/entries/{id}
+    $completedPattern = '/^completedwatchlist\/entries\/(\d+)\/$/';
+    $completedPattern2 = '/^completedwatchlist\/entries\/(\d+)$/';
+
 
     // if endpoint matches for delete watch list entry
     if (preg_match($pattern, $endpoint, $matches) || preg_match($pattern2, $endpoint, $matches)) {
@@ -262,17 +593,63 @@ elseif ($method == 'DELETE') {
         //check if api key is valid
         $userId = checkApiKey($apiKey, $pdo);
 
-        // check that a movieID was submit as form data
-        if (empty($_POST['movieID'])) {
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        // data as movieID
+        // first check if they are all set
+        if (empty($req_data['movieID'])) {
             sendResponse(500, ["error" => "You must provide a movieid"]);
         }
+        // get form data in the same method as the API key
+        $movieID = $req_data["movieID"];
 
         //check that movieID is a number
-        if (!is_numeric($_POST['movieID'])) {
+        if (!is_numeric($movieID)) {
             //send error response
             sendResponse(400, ["error" => "movieID must be a number"]);
         }
+        //check that movieID is in toWatchList
+        $stmt = $pdo->prepare("SELECT * FROM cois3430_toWatchList WHERE toWatchListID=? AND movieID=? AND userID=?");
+        $stmt->execute([$toWatchListId,$movieID,$userId]);
+        //check that movieID exists in toWatchList
+        if ($stmt->rowCount() == 0) {
+            sendResponse(400, ["error" => "movieID does not exist in toWatchList"]);
+        }
+        //otherwise remove watch list entry
+        else {
+            $stmt = $pdo->prepare("DELETE FROM cois3430_toWatchList WHERE toWatchListID=? AND movieID=? AND userID=?");
+            $stmt->execute([$toWatchListId,$movieID,$userId]);
+            sendResponse(200, ["message" => "movieID removed from toWatchList"]);
+        }
 
+    }
+    // else if endpoint matches for delete completed watch list entry
+    if (preg_match($completedPattern, $endpoint, $matches) || preg_match($completedPattern2, $endpoint, $matches)) {
+        //get movieID from url
+        $movieID = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+
+        //check that movieID is in toWatchList
+        $stmt = $pdo->prepare("SELECT * FROM cois3430_completedWatchList WHERE movieID=?  AND userID=?");
+        $stmt->execute([$movieID,$userId]);
+        //check that movieID exists in toWatchList
+        if ($stmt->rowCount() == 0) {
+            sendResponse(400, ["error" => "movieID does not exist in completedWatchList"]);
+        }
+        //otherwise remove watch list entry
+        else {
+            $stmt = $pdo->prepare("DELETE FROM cois3430_completedWatchList WHERE movieID=? AND userID=?");
+            $stmt->execute([$movieID,$userId]);
+            sendResponse(200, ["message" => "movieID removed from completedWatchList"]);
+        }
+
+    } else {
+        sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
 }
 ?>
