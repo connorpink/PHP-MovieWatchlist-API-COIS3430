@@ -39,7 +39,7 @@ function checkApiKey($apiKey, $pdo)
 
 // Parse URL and method
 $uri = parse_url($_SERVER['REQUEST_URI']);
-define('__BASE__', '/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/');
+define('__BASE__', '/~' . $name . '/3430/assn/cois-3430-2024su-a2-BigBeill/api/');
 $endpoint = strtolower(str_replace(__BASE__, '', $uri['path']));
 $method = $_SERVER['REQUEST_METHOD'];
 
