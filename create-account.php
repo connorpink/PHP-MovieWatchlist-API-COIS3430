@@ -36,26 +36,43 @@ if(isset($_POST['submit'])){
     if ($results != 0) { $error = 'username taken'; }
     else {
 
-      //hash the password
-      $hash = password_hash($passwordOne, PASSWORD_DEFAULT);
-
-      //create an api key
-      $bytes = random_bytes(32);
-      $base64ApiKey = base64_encode($bytes);
-
-      //save user data to the database
-      $query = 'insert into cois3430_users (username,email,password,api_key,api_date) values (?,?,?,?,NOW())';
+      //check if email already exists in database
+      $query = 'SELECT * FROM cois3430_users WHERE email = ?';
       $stmt = $pdo->prepare($query);
-      $stmt->execute([$username, $email, $hash,$base64ApiKey]);
+      $stmt->execute([$email]);
+      $results = $stmt->rowCount();
+      if ($results != 0) { $error = 'email taken'; }
+      else {
 
-      //save relavent data to session
-      $_SESSION['userID'] = $pdo->lastInsertId();
-      $_SESSION['username'] = $username;
-      $_SESSION['api_key'] = $base64ApiKey;
+        //hash the password
+        $hash = password_hash($passwordOne, PASSWORD_DEFAULT);
 
-      //redirect user
-      header("Location:index.php");
-      exit();
+        //create an unique api key
+        $keyFound = false;
+        while (!$keyFound){
+          $bytes = random_bytes(32);
+          $base64ApiKey = base64_encode($bytes);
+          $query = 'SELECT * FROM cois3430_users WHERE api_key = ?';
+          $stmt = $pdo->prepare($query);
+          $stmt->execute([$base64ApiKey]);
+          $results = $stmt->rowCount();
+          if ($results == 0) { $keyFound = true; }
+        }
+
+        //save user data to the database
+        $query = 'insert into cois3430_users (username,email,password,api_key,api_date) values (?,?,?,?,NOW())';
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$username, $email, $hash,$base64ApiKey]);
+
+        //save relavent data to session
+        $_SESSION['userID'] = $pdo->lastInsertId();
+        $_SESSION['username'] = $username;
+        $_SESSION['api_key'] = $base64ApiKey;
+
+        //redirect user
+        header("Location:index.php");
+        exit();
+      }
     }
   }
 }
