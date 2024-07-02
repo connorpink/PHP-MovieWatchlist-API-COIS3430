@@ -41,3 +41,32 @@ nav a:hover {
   text-decoration: none;
   border: .12rem solid #fecaca;
 }
+
+
+.profileDiv {
+  margin: 0;
+  width: 30rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: .3rem solid #4c0519;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.profileDiv .imageContainer {
+  margin-top: -.15rem;
+  border-radius: 1.2rem 1.2rem 0rem 0rem;
+  background-color: #4c0519;
+}
+
+.profileDiv img {
+  margin: .9rem 0rem .9rem 3rem;
+  width: 6rem;
+  border-radius: 1.2rem;
+}
+
+.profileDiv p {
+  margin-left: 1.5rem;
+}
