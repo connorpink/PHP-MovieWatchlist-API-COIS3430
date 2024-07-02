@@ -39,3 +39,5 @@ output:
 ### To Watch List
 ### Completed Watch List
 ### Users
+### Incorrect Endpoint
+![alt text](testing-screenshots/WrongEndpoint.png)
