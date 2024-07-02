@@ -82,17 +82,18 @@ if ($method == 'GET') {
     if (str_contains($endpoint, "movies")) {
         if ($endpoint == 'movies' || $endpoint == 'movies/') {
             $getVars = array_keys($_GET);
-            
+
             //check form movie name filter
-            if (isset($_GET['name'])){
+            if (isset($_GET['name'])) {
+                $name = $_GET['name'];
+                //check that name is a string
+                if (!is_string($name)) {
+                    //send error response
+                    sendResponse(400, ["error" => "name must be a string"]);
+                }
                 // check for both name and rating filter
-                if (isset($_GET['rating'])){
-                    $name = $_GET['name'];
-                    //check that name is a string
-                    if (!is_string($name)) {
-                        //send error response
-                        sendResponse(400, ["error" => "name must be a string"]);
-                    }
+                if (isset($_GET['rating'])) {
+
                     $rating = $_GET['rating'];
                     //check that rating is a number and is between 1-10 inclusive
                     if (!is_numeric($rating)) {
@@ -114,13 +115,7 @@ if ($method == 'GET') {
                     }
                 }
                 //otherwise just do name filter
-                else{
-                    $name = $_GET['name'];
-                    //check that name is a string
-                    if (!is_string($name)) {
-                        //send error response
-                        sendResponse(400, ["error" => "name must be a string"]);
-                    }
+                else {
                     $stmt = $pdo->prepare("SELECT movieID,title,release_date,vote_average,vote_count,runtime,description FROM cois3430_movies WHERE title LIKE ?");
                     $stmt->execute(["%$name%"]);
                     $movies = $stmt->fetchAll();
@@ -131,10 +126,10 @@ if ($method == 'GET') {
                         sendResponse(500, ["error" => "Failed to query database"]);
                     }
                 }
-                
-            } 
+
+            }
             // check for filter rating
-            else if (isset($_GET['rating'])){
+            elseif (isset($_GET['rating'])) {
                 $rating = $_GET['rating'];
                 //check that rating is a number and is between 1-10 inclusive
                 if (!is_numeric($rating)) {
@@ -208,7 +203,7 @@ if ($method == 'GET') {
         $userId = checkApiKey($apiKey, $pdo);
 
         // if filter set for priority
-        if (isset($_GET['priority'])){
+        if (isset($_GET['priority'])) {
             $priority = $_GET['priority'];
             //check that priority is a number
             if (!is_numeric($priority)) {
@@ -249,7 +244,7 @@ if ($method == 'GET') {
         $userId = checkApiKey($apiKey, $pdo);
 
         // optional filter on number of times watched
-        if (isset($_GET['times_watched'])){
+        if (isset($_GET['times_watched'])) {
             $times_watched = $_GET['times_watched'];
             //check that times_watched is a number
             if (!is_numeric($times_watched)) {
@@ -259,7 +254,7 @@ if ($method == 'GET') {
             $stmt = $pdo->prepare("SELECT * FROM `cois3430_completedWatchList` WHERE `userID` =? AND times_watched >= ?");
             $stmt->execute([$userId, $times_watched]);
             $entries = $stmt->fetchAll();
-    
+
             // check for rows returned
             if ($entries) {
                 sendResponse(200, $entries);
@@ -269,7 +264,7 @@ if ($method == 'GET') {
         }
 
         //else just return completed watch list entries
-        else{
+        else {
             $stmt = $pdo->prepare("SELECT * FROM `cois3430_completedWatchList` WHERE `userID` =?");
             $stmt->execute([$userId]);
             $entries = $stmt->fetchAll();
