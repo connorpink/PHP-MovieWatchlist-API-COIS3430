@@ -32,10 +32,10 @@ if(isset($_POST['submit'])){
     else {
 
       //check if password is correct
-      if (!password_verify($passwordOne, $databaseUser['password'])){ $error = 'incorect passwrod'; }
+      if (!password_verify($passwordOne, $databaseUser['password'])){ $error = 'incorrect password'; }
       else {
 
-        //save all relavent information to session
+        //save all relevant information to session
         $_SESSION['username'] = $databaseUser['username'];
         $_SESSION['userID'] = $databaseUser['userID'];
         $_SESSION['api_key'] = $databaseUser['api_key'];
