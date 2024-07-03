@@ -766,6 +766,10 @@ elseif ($method == 'PATCH') {
         //first get old times watched in order to increment
         $stmt = $pdo->prepare('SELECT times_watched FROM cois3430_completedWatchList WHERE movieID=? AND userId=?');
         $stmt->execute([$movieID, $userId]);
+        //check that movieID exists in toWatchList
+        if ($stmt->rowCount() == 0) {
+            sendResponse(400, ["error" => "movieID does not exist in toWatchList"]);
+        }
         //extract times_watched
         $entry = $stmt->fetch();
         // calculate new incremental times watched

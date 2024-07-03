@@ -180,6 +180,33 @@ https://loki.trentu.ca/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/co
 ![alt text](testing-screenshots/completedWatchListRating.png)
 error if no entries:
 ![alt text](testing-screenshots/completedWatchListNoEntries.png)
+
+#### adding times watched to watch list entry
+adds number of times a movie is watched by the user with movieId passed in the URL
+URL like:
+```
+https://loki.trentu.ca/~mackenzieneill/3430/assn/cois-3430-2024su-a2-BigBeill/api/completedwatchlist/entries/1/times-watched
+```
+returns:
+![alt text](testing-screenshots/timesWatchedAdded.png)
+error if invalid id:
+![alt text](testing-screenshots/timesWatchedBadId.png)
+if no times watched provided
+![alt text](testing-screenshots/noTimesWatched.png)
+if times watched is not an integer
+![alt text](testing-screenshots/timesWatchedNotANumber.png)
+times watched must be a positive integer
+![alt text](testing-screenshots/positiveTimesWatched.png)
+#### deleting item from Watch List
+deletes item from Completed Watch List table with movieId passed in the URL
+URL like:
+```http
+https://loki.trentu.ca/~mackenzieneill/3430/assn/cois-3430-2024su-a2-BigBeill/api/completedwatchlist/entries/1
+```
+returns:
+![alt text](testing-screenshots/completedWatchListDeleteGood.png)
+if incorrect id:
+![alt text](testing-screenshots/completedWatchListDeleteBadId.png)
 ### Users
 #### See User Stats
 URL like 
