@@ -1,6 +1,32 @@
 # Testing
 ## Create Account
+this is what the database looks like before testing the create account function
+![alt text](testing-screenshots/databaseBeforeUser.png)
+### missing data
+the system will give errors if any field is missing an input
+![alt text](testing-screenshots/noUsername.png)
+![alt text](testing-screenshots/noEmail.png)
+![alt text](testing-screenshots/noPassword.png)
+### Bad Data
+system will give errors if any data is invalid/taken
+![alt text](testing-screenshots/badEmail.png)
+![alt text](testing-screenshots/badPasswords.png)
+![alt text](testing-screenshots/usernameTaken.png)
+![alt text](testing-screenshots/emailTaken.png)
+### result
+once user is crated database looks like this
+![alt text](testing-screenshots/databaseWithUser.png)
 ## Login
+give an error when user tries to log in with incorrect information
+![alt text](testing-screenshots/usernameNotFound.png)
+![alt text](testing-screenshots/incorrectPassword.png)
+
+## Profile
+user can use profile to view and request a new api key
+![alt text](testing-screenshots/oldKey.png)
+![alt text](testing-screenshots/newKey.png)
+
+
 ## User Status
 ## API Requests
 ### API Key testing
