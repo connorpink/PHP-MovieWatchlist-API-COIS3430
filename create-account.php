@@ -20,6 +20,7 @@ if(isset($_POST['submit'])){
   if (empty($username)){ $error = 'no username given'; }
   else if (empty($email)){ $error = 'no email given'; }
   else if (empty($passwordOne)) { $error = 'no password given'; }
+  else if (strlen($passwordOne) < 8) { $error = 'password must be at least 8 characters long'; }
   else if ($passwordOne != $passwordTwo) { $error = 'passwords dont match'; }
   else if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { $error = 'invalid email'; }
   else {
