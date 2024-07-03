@@ -150,8 +150,42 @@ output if entry did not exist:
 ![alt text](testing-screenshots/toWatchListInserted.png)
 output if entry did exist and was overwritten:
 ![alt text](testing-screenshots/toWatchListUpdated.png)
+if the body form data is not included an error is sent:
+![alt text](testing-screenshots/insertCompletedMissingInfo.png)
+error if priority is not a number
+![alt text](testing-screenshots/priorityMustBeNumber.png)
+
+
+#### Patch priority for to watch list entry
+requires API key. takes form encoded body {priority} as an integer.
+URL like : 
+```http
+https://loki.trentu.ca/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/towatchlist/entries/5/priority
+```
+output:
+![alt text](testing-screenshots/patchPriority.png)
+if no priority is submit
+![alt text](testing-screenshots/noPriority.png)
+if priority is not a number
+![alt text](testing-screenshots/priorityMustBeNumber.png)
+if entry does not exist in watch list
+![alt text](testing-screenshots/entryDoesNotExistInWatchList.png)
+
+#### Delete watch list entry with ID
+requires API key. takes form encoded body like {movieID}. 
+URL like:
+```http
+https://loki.trentu.ca/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/towatchlist/entries/3/
+```
+output:
+![alt text](testing-screenshots/movieRemoved.png)
+if movieID does not exist in toWatchList:
+![alt text](testing-screenshots/movieDoesNotExist.png)
+if movieID is not a number
+![alt text](testing-screenshots/movieIdMustBeNumber.png)
+
 ### Completed Watch List
-#### completed watch list entries
+#### Get completed watch list entries
 return all entries for user in completed watch list. User ID is retrieved based on the API key that is passed
 URL like:
 ```HTTP
@@ -171,7 +205,7 @@ output:
 ![alt text](testing-screenshots/timesWatchedFilter.png)
 error if times watched is not a number:
 ![alt text](testing-screenshots/timesWatchedNotANumber.png)
-#### completed watch list rating by movieID
+#### Get completed watch list rating by movieID
 returns movieID and rating for completed wathchlist entry with the movieID passed in the URL
 URL like: 
 ```http
@@ -180,6 +214,59 @@ https://loki.trentu.ca/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/co
 ![alt text](testing-screenshots/completedWatchListRating.png)
 error if no entries:
 ![alt text](testing-screenshots/completedWatchListNoEntries.png)
+
+#### Post completed watch list entry
+inserts new entry in completed watch list table
+requires API key.
+This request also updates the rating of the movie in the movies table accounting for the number of times the person watched it for weighted effect.
+URL like :
+takes form-encoded body data:
+{
+    movieID,rating,notes,date_initially_watched,date_last_watched,times_watched
+}
+date values are formatted like YYYY-MM-DD
+example URL is 
+```http
+https://loki.trentu.ca/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/completedwatchlist/entries
+```
+output:
+![alt text](testing-screenshots/insertCompletedWatchlist.png)
+if movieID does not exist in movies table
+![alt text](testing-screenshots/movieNotInMoviesTable.png)
+if movieID already exists in completed watch list table
+![alt text](testing-screenshots/movieAlreadyExist.png)
+ times watched must be a integer
+![alt text](testing-screenshots/timesWatchedNotANumber.png)
+movieID must be a integer
+![alt text](testing-screenshots/movieIdMustBeNumber.png)
+rating must be a integer
+![alt text](testing-screenshots/ratingAsNumber.png)
+
+rating must be between 1 and 10
+![alt text](testing-screenshots/ratingBetween1and10.png)
+date initially watched must be a date string
+![alt text](testing-screenshots/dateInitiallyWatchedFormat.png)
+date last watched must be a date string
+![alt text](testing-screenshots/dateLastWatchedFormat.png)
+
+#### Patch completed watch list rating
+updates the rating for given movieID for user in completed watch list table. takes MovieID in URL and times-watched as form-encoded body. 
+This request also updates the rating for the movie in the Movie table accounting for the number of times the person watched it for weighted average.
+
+requires API key.
+URL like :
+```http
+https://loki.trentu.ca/~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api/completedwatchlist/entries/1/rating
+```
+output:
+![alt text](testing-screenshots/updateRating.png)
+if no rating provided
+![alt text](testing-screenshots/ratingRequired.png)
+if rating is not an integer
+![alt text](testing-screenshots/ratingAsNumber.png)
+rating must be a positive integer between 1 and 10
+![alt text](testing-screenshots/ratingBetween1and10.png)
+
 
 #### adding times watched to watch list entry
 adds number of times a movie is watched by the user with movieId passed in the URL
