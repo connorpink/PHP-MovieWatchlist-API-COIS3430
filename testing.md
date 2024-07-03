@@ -268,8 +268,9 @@ rating must be a positive integer between 1 and 10
 ![alt text](testing-screenshots/ratingBetween1and10.png)
 
 
-#### adding times watched to watch list entry
+#### Patch adding times watched to completed watch list entry
 adds number of times a movie is watched by the user with movieId passed in the URL
+API key is required
 URL like:
 ```
 https://loki.trentu.ca/~mackenzieneill/3430/assn/cois-3430-2024su-a2-BigBeill/api/completedwatchlist/entries/1/times-watched
@@ -284,8 +285,9 @@ if times watched is not an integer
 ![alt text](testing-screenshots/timesWatchedNotANumber.png)
 times watched must be a positive integer
 ![alt text](testing-screenshots/positiveTimesWatched.png)
-#### deleting item from Watch List
+#### Delete deleting item from completed Watch List
 deletes item from Completed Watch List table with movieId passed in the URL
+API key is required
 URL like:
 ```http
 https://loki.trentu.ca/~mackenzieneill/3430/assn/cois-3430-2024su-a2-BigBeill/api/completedwatchlist/entries/1
