@@ -1,27 +1,27 @@
-SetEnv MYNAME mackenzieneill
+SetEnv MYNAME connorpink
 #this list should include the the allowed HTTP methods
 <Limit POST PUT PATCH DELETE GET>
   Require all granted
 </Limit>
 
 #allow all requests to access index.php
-<Files "index.php">
-    Require all granted
-</Files>
+# <Files "index.php">
+#     Require all granted
+# </Files>
 
 #enable apache rewrite engine
 RewriteEngine On
 
 #ensure all requests go through HTTPS
-RewriteCond %{HTTPS} off
-RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
+#RewriteCond %{HTTPS} off
+#RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R,L]
 
 # Turn on Auth Header
 RewriteCond %{HTTP:Authorization} ^(.*)
 RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
 
 #set the base directory for rewrite to the folder your api is in
-RewriteBase /~mackenzieneill/3430/assn/cois-3430-2024su-a2-BigBeill/api
+RewriteBase /~connorpink/3430/assn/cois-3430-2024su-a2-BigBeill/api
 
 #deliver the folder of file directly if it exists
 RewriteCond %{REQUEST_FILENAME} !-d

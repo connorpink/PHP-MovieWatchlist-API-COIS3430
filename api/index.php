@@ -13,6 +13,8 @@ function sendResponse($status, $data)
     $json = json_encode($data, JSON_PRETTY_PRINT);
     http_response_code($status);
     header("Content-Type: application/json; charset=UTF-8");
+    header("Access-Control-Allow-Origin: *");
+    header("Access-Control-Allow-Headers: *");
     header("Content-Length: " . strlen($json));
     echo $json;
     exit();
@@ -885,6 +887,15 @@ elseif ($method == 'DELETE') {
     } else {
         sendResponse(500, ["error" => "something was wrong with the endpoint"]);
     }
+} elseif ($method == 'OPTIONS') {
+    sendResponse(200, ["preflight" => "this was a preflight"]);
+    // assume this is a CORS preflight request
+
+    // http_response_code(200);
+
+    // header("Access-Control-Allow-Origin: *");
+
+    // header("Access-Control-Allow-Headers: X-API-Key, X_API_Key");
 }
 ?>
 
