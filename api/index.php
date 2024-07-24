@@ -15,6 +15,7 @@ function sendResponse($status, $data)
     header("Content-Type: application/json; charset=UTF-8");
     header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Headers: *");
+    header("Access-Control-Allow-Methods: *");
     header("Content-Length: " . strlen($json));
     echo $json;
     exit();
@@ -225,7 +226,7 @@ if ($method == 'GET') {
         }
         // else just return all watch list entries
         else {
-            $stmt = $pdo->prepare("SELECT * FROM `cois3430_toWatchList` WHERE `userID` = ?");
+            $stmt = $pdo->prepare("SELECT * FROM `cois3430_toWatchList` WHERE `userID` = ? order by priority");
             $stmt->execute([$userId]);
             $entries = $stmt->fetchAll();
 
@@ -267,7 +268,7 @@ if ($method == 'GET') {
 
         //else just return completed watch list entries
         else {
-            $stmt = $pdo->prepare("SELECT * FROM `cois3430_completedWatchList` WHERE `userID` =?");
+            $stmt = $pdo->prepare("SELECT * FROM `cois3430_completedWatchList` WHERE `userID` =? ORDER BY rating DESC");
             $stmt->execute([$userId]);
             $entries = $stmt->fetchAll();
 
@@ -397,11 +398,11 @@ if ($method == 'GET') {
 
                 // now take plannedTimeWatched,firstMovieWatched, firstmovieWatchedTitle,averageRating, and timeWatched and put into json object
                 $entry = [
-                    "date of first Movie Watched" => $firstMovieWatched,
-                    "first Movie watched Title" => $firstMovieWatchedTitle,
-                    "average movie Rating" => $averageRating,
-                    "planned movie Time Watched" => $plannedTimeWatched,
-                    "actual movie time watched" => $timeWatched
+                    "date_of_first_Movie_Watched" => $firstMovieWatched,
+                    "first_Movie_watched_Title" => $firstMovieWatchedTitle,
+                    "average_movie_Rating" => $averageRating,
+                    "planned_movie_Time_Watched" => $plannedTimeWatched,
+                    "actual_movie_time_watched" => $timeWatched
                 ];
                 //send response
                 sendResponse(200, ["stats" => $entry]);
@@ -651,7 +652,7 @@ elseif ($method == 'PATCH') {
     // if match is successful then update priority for entry
     if (preg_match($pattern, $endpoint, $matches) || preg_match($pattern2, $endpoint, $matches)) {
         //get toWatchListId from url
-        $toWatchListId  = $matches[1];
+        $movieId  = $matches[1];
 
         //get api key from form header data (header is X-API-KEY: {key})
         $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
@@ -674,16 +675,16 @@ elseif ($method == 'PATCH') {
         }
 
         //check that entry exists in DB
-        $stmt = $pdo->prepare('SELECT * FROM cois3430_toWatchList WHERE toWatchListId=? AND userID=?');
-        $stmt->execute([$toWatchListId, $userId]);
+        $stmt = $pdo->prepare('SELECT * FROM cois3430_toWatchList WHERE movieID=? AND userID=?');
+        $stmt->execute([$movieId, $userId]);
         //check that entry exists in toWatchList
         if ($stmt->rowCount() == 0) {
             sendResponse(400, ["error" => "this entry does not exist in toWatchList"]);
         }
         //otherwise update watch list entry
         else {
-            $stmt = $pdo->prepare("UPDATE cois3430_toWatchList SET priority=? WHERE toWatchListID=? AND userID=?");
-            $stmt->execute([$priority, $toWatchListId,$userId]);
+            $stmt = $pdo->prepare("UPDATE cois3430_toWatchList SET priority=? WHERE movieID=? AND userID=?");
+            $stmt->execute([$priority, $movieId,$userId]);
             sendResponse(200, ["message" => "priority updated for entry in toWatchList"]);
         }
 
@@ -889,13 +890,7 @@ elseif ($method == 'DELETE') {
     }
 } elseif ($method == 'OPTIONS') {
     sendResponse(200, ["preflight" => "this was a preflight"]);
-    // assume this is a CORS preflight request
 
-    // http_response_code(200);
-
-    // header("Access-Control-Allow-Origin: *");
-
-    // header("Access-Control-Allow-Headers: X-API-Key, X_API_Key");
 }
 ?>
 
