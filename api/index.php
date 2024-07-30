@@ -454,13 +454,33 @@ elseif ($method == "POST") {
             //send error response
             sendResponse(400, ["error" => "Notes must be a string"]);
         }
-        $stmt = $pdo->prepare("INSERT INTO cois3430_toWatchList (`userID`, `movieID`, `priority`, `notes`) VALUES (?,?,?,?)");
-        $stmt->execute([$userId, $movieID, $priority, $notes]);
-        // if successful insert into toWatchlist send appropriate response else send error
-        if ($stmt) {
-            sendResponse(201, ["message" => "Successfully added to watchlist"]);
+        // get movie data from movie table with movieID
+        $stmt = $pdo->prepare("SELECT * FROM cois3430_movies WHERE movieID=?");
+        $stmt->execute([$movieID]);
+        $movie = $stmt->fetch();
+        // if movieID does not exist in movie database throw error
+        if (!$movie) {
+            // throw error
+            sendResponse(409, ["error" => "movieID $movieID does not exist in movie database"]);
         } else {
-            sendResponse(500, ["error" => "failed to insert watch list entry"]);
+            // check if movie ID already exists in CompletedWatchList
+            $stmt  = $pdo->prepare("SELECT * FROM cois3430_toWatchList WHERE movieID =? AND userID =?");
+            $stmt->execute([$movieID, $userId]);
+            $result = $stmt->fetch();
+            if ($result) {
+                //if there is an entry with this movie id send an error saying movie already exists
+                sendResponse(409, ["error" => "movieID $movieID already exists in watch list"]);
+            } else {
+                // insert new movie to completed watchlist
+                $stmt = $pdo->prepare("INSERT INTO cois3430_toWatchList (`userID`, `movieID`, `priority`, `notes`) VALUES (?,?,?,?)");
+                $stmt->execute([$userId, $movieID, $priority, $notes]);
+                // if successful insert into toWatchlist send appropriate response else send error
+                if ($stmt) {
+                    sendResponse(201, ["message" => "Successfully added to watchlist"]);
+                } else {
+                    sendResponse(500, ["error" => "failed to insert watch list entry"]);
+                }
+            }
         }
     }
 
@@ -476,9 +496,9 @@ elseif ($method == "POST") {
 
         // movieID, rating,notes,date_initially_watched, date_last_watched, times_watched
         // first check if they are all set
-        if (empty($req_data['movieID']) || empty($req_data["notes"]) || empty($req_data["date_initially_watched"]) || empty($req_data["date_last_watched"]) || empty($req_data["times_watched"])) {
-            sendResponse(500, ["error" => "You must provide a movieID, notes, date_initially_wathced, date_last_watched, and times_watched "]);
-        }
+        // if (empty($req_data['movieID']) || empty($req_data["notes"]) || empty($req_data["date_initially_watched"]) || empty($req_data["date_last_watched"]) || empty($req_data["times_watched"])) {
+        //     sendResponse(500, ["error" => "You must provide a movieID, notes, date_initially_wathced, date_last_watched, and times_watched "]);
+        // }
         $movieID = $req_data["movieID"];
         $rating = $req_data['rating'];
         $notes = $req_data['notes'];
@@ -494,33 +514,33 @@ elseif ($method == "POST") {
         //check that rating is a number and is between 1-10 inclusive
         if (!is_numeric($rating)) {
             //send error response
-            sendResponse(400, ["error" => "rating must be a number"]);
+            sendResponse(401, ["error" => "rating must be a number"]);
         }
         if ($rating < 1 || $rating > 10) {
             //send error response
-            sendResponse(400, ["error" => "rating must be between 1 and 10"]);
+            sendResponse(402, ["error" => "rating must be between 1 and 10"]);
         }
 
         //check that dateIntitiallyWatched is in SQL date format like 2019-03-15
         if (!validateDate($dateInitiallyWatched, 'Y-m-d')) {
             //send error
-            sendResponse(400, ["error" => "date_initially_watched is not in SQL date format like 2019-03-15"]);
+            sendResponse(403, ["error" => "date_initially_watched is not in SQL date format like 2019-03-15"]);
         }
 
         //check that dateLastWatched is in SQL date format like 2019-03-15
         if (!validateDate($dateLastWatched, 'Y-m-d')) {
             //send error
-            sendResponse(400, ["error" => "date_last_watched is not in SQL date format like 2019-03-15"]);
+            sendResponse(404, ["error" => "date_last_watched is not in SQL date format like 2019-03-15"]);
         }
         //check that timesWatched is an integer
         if (!is_numeric($timesWatched)) {
             //send error response
-            sendResponse(400, ["error" => "times_watched must be an integer"]);
+            sendResponse(405, ["error" => "times_watched must be an integer"]);
         }
         //check that timesWatched is greater than or equal to zero
         if ($timesWatched < 0) {
             //send error response
-            sendResponse(400, ["error" => "times_watched must be a positive number"]);
+            sendResponse(406, ["error" => "times_watched must be a positive number"]);
         }
         // get movie data from movie table with movieID
         $stmt = $pdo->prepare("SELECT * FROM cois3430_movies WHERE movieID=?");
@@ -637,9 +657,13 @@ elseif ($method == 'PUT') {
 
 //else if method is patch
 elseif ($method == 'PATCH') {
-    // Define the pattern to match /toWatchList/entries/{id}
+    // Define the pattern to match /toWatchList/entries/{id}/priority
     $pattern = '/^towatchlist\/entries\/(\d+)\/priority$/';
     $pattern2 = '/^towatchlist\/entries\/(\d+)\/priority\/$/';
+
+    // Define the pattern to match /toWatchList/entries/{id}/notes
+    $notesPattern = '/^towatchlist\/entries\/(\d+)\/notes$/';
+    $notesPattern2 = '/^towatchlist\/entries\/(\d+)\/notes\/$/';
 
     //patterns for /completedWatchList/entries/{id}/rating
     $ratingPattern = '/^completedwatchlist\/entries\/(\d+)\/rating$/';
@@ -689,6 +713,43 @@ elseif ($method == 'PATCH') {
         }
 
     }
+
+    // if match is successful then update notes for entry /toWatchList/entries/{id}/notes
+    if (preg_match($notesPattern, $endpoint, $matches) || preg_match($notesPattern2, $endpoint, $matches)) {
+        //get toWatchListId from url
+        $movieId  = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        // data as priority
+        // first check if they are all set
+        if (empty($req_data['notes'])) {
+            sendResponse(500, ["error" => "You must provide a notes"]);
+        }
+        // get form data in the same method as the API key
+        $notes = $req_data["notes"];
+
+        //check that entry exists in DB
+        $stmt = $pdo->prepare('SELECT * FROM cois3430_toWatchList WHERE movieID=? AND userID=?');
+        $stmt->execute([$movieId, $userId]);
+        //check that entry exists in toWatchList
+        if ($stmt->rowCount() == 0) {
+            sendResponse(400, ["error" => "this entry does not exist in toWatchList"]);
+        }
+        //otherwise update watch list entry
+        else {
+            $stmt = $pdo->prepare("UPDATE cois3430_toWatchList SET notes=? WHERE movieID=? AND userID=?");
+            $stmt->execute([$notes, $movieId,$userId]);
+            sendResponse(200, ["message" => "notes updated for entry in toWatchList"]);
+        }
+
+    }
+
     // else if endpoint like /completedWatchList/entries/{id}/rating/
     elseif (preg_match($ratingPattern, $endpoint, $matches) || preg_match($ratingPattern2, $endpoint, $matches)) {
         //get movieID from url
