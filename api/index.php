@@ -400,6 +400,7 @@ if ($method == 'GET') {
                 $entry = [
                     "date_of_first_Movie_Watched" => $firstMovieWatched,
                     "first_Movie_watched_Title" => $firstMovieWatchedTitle,
+                    "first_Movie_watched_Id" => $firstMovieWatchedId,
                     "average_movie_Rating" => $averageRating,
                     "planned_movie_Time_Watched" => $plannedTimeWatched,
                     "actual_movie_time_watched" => $timeWatched
@@ -665,6 +666,10 @@ elseif ($method == 'PATCH') {
     $notesPattern = '/^towatchlist\/entries\/(\d+)\/notes$/';
     $notesPattern2 = '/^towatchlist\/entries\/(\d+)\/notes\/$/';
 
+    // Define the pattern to match /toWatchList/entries/{id}/notes
+    $notesCompletedPattern = '/^completedwatchlist\/entries\/(\d+)\/notes$/';
+    $notesCompletedPattern2 = '/^completedwatchlist\/entries\/(\d+)\/notes\/$/';
+
     //patterns for /completedWatchList/entries/{id}/rating
     $ratingPattern = '/^completedwatchlist\/entries\/(\d+)\/rating$/';
     $ratingPattern2 = '/^completedwatchlist\/entries\/(\d+)\/rating\/$/';
@@ -715,6 +720,42 @@ elseif ($method == 'PATCH') {
     }
 
     // if match is successful then update notes for entry /toWatchList/entries/{id}/notes
+    if (preg_match($notesCompletedPattern, $endpoint, $matches) || preg_match($notesCompletedPattern2, $endpoint, $matches)) {
+        //get toWatchListId from url
+        $movieId  = $matches[1];
+
+        //get api key from form header data (header is X-API-KEY: {key})
+        $apiKey = $_SERVER['HTTP_X_API_KEY'] ?? '';
+        //check if api key is valid
+        $userId = checkApiKey($apiKey, $pdo);
+
+        parse_str(file_get_contents('php://input'), $req_data);
+
+        // data as notes
+        // first check if they are all set
+        if (empty($req_data['notes'])) {
+            sendResponse(500, ["error" => "You must provide a notes"]);
+        }
+        // get form data in the same method as the API key
+        $notes = $req_data["notes"];
+
+        //check that entry exists in DB
+        $stmt = $pdo->prepare('SELECT * FROM cois3430_completedWatchList WHERE movieID=? AND userID=?');
+        $stmt->execute([$movieId, $userId]);
+        //check that entry exists in toWatchList
+        if ($stmt->rowCount() == 0) {
+            sendResponse(400, ["error" => "this entry does not exist in completedWatchList"]);
+        }
+        //otherwise update watch list entry
+        else {
+            $stmt = $pdo->prepare("UPDATE cois3430_completedWatchList SET notes=? WHERE movieID=? AND userID=?");
+            $stmt->execute([$notes, $movieId,$userId]);
+            sendResponse(200, ["message" => "notes updated for entry in completedWatchList"]);
+        }
+
+    }
+
+    // if match is successful then update notes for completed watch list entry /completedwatchlist/entries/{id}/notes
     if (preg_match($notesPattern, $endpoint, $matches) || preg_match($notesPattern2, $endpoint, $matches)) {
         //get toWatchListId from url
         $movieId  = $matches[1];

@@ -45,7 +45,9 @@ session_start();
         </ul>
         <li>Post watch list entry - {POST} /toWatchList/entries {X-API-KEY} {movieId, priority, notes}</li>
         <li>Put watch list entry - {PUT} /towatchlist/entries/{movieId} {X-API-KEY} {priority, notes}</li>
-        <li>Patch watch list entry - {PATCH} /towatchlist/entries/{movieId}/priority {X-API-KEY} { priority }</li>
+        <li>Patch watch list entry priority- {PATCH} /towatchlist/entries/{movieId}/priority {X-API-KEY} { priority }
+        </li>
+        <li>Patch watch list entry notes - {PATCH} /towatchlist/entries/{movieId}/notes {X-API-KEY} { notes }</li>
         <li>Delete watch list entry - {DELETE} /towatchlist/entries/{movieID} {X-API-KEY}</li>
     </ul>
     <h3> Completed Watch List </h3>
@@ -67,6 +69,8 @@ session_start();
             {rating}</li>
         <li>Patch completed watch list entry's times-watched - {PATCH}
             /completedwatchlist/entries/{movieId}/times-watched {X-API-KEY} { times_watched }</li>
+        <li>Patch completed watch list entry's notes - {PATCH}
+            /completedwatchlist/entries/{movieId}/notes {X-API-KEY} { notes }</li>
         <li>Delete completed watch list entry - {DELETE} /completedwatchlist/entries/{movieId} {X-API-KEY} </li>
     </ul>
     <h3> User </h3>
